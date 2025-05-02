@@ -1,0 +1,343 @@
+version: "3.8"
+
+services:
+  # === Master Eligible Nodes ===
+  es-master-1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: es-master-1
+    environment:
+      - node.name=es-master-1-node # Use unique node.name
+      - cluster.name=dev-cluster
+      - node.roles=master
+      - discovery.seed_hosts=es-master-1,es-master-2,es-master-3 # Point to master nodes by service name
+      - cluster.initial_master_nodes=es-master-1-node,es-master-2-node,es-master-3-node # Point to master nodes by node.name for bootstrap
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false # Disable security
+      - network.host=0.0.0.0
+      - http.port=9200
+      - ES_JAVA_OPTS=-Xms768m -Xmx768m # Resource limit
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65535
+        hard: 65535
+    networks:
+      - elastic-net
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s http://localhost:9200/_cluster/health?local=true | grep -q '\"status\":\"\\(green\\|yellow\\)\"'",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  es-master-2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: es-master-2
+    environment:
+      - node.name=es-master-2-node
+      - cluster.name=dev-cluster
+      - node.roles=master
+      - discovery.seed_hosts=es-master-1,es-master-2,es-master-3
+      - cluster.initial_master_nodes=es-master-1-node,es-master-2-node,es-master-3-node
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false
+      - network.host=0.0.0.0
+      - http.port=9200
+      - ES_JAVA_OPTS=-Xms768m -Xmx768m
+    ulimits:
+      { memlock: { soft: -1, hard: -1 }, nofile: { soft: 65535, hard: 65535 } }
+    networks: [elastic-net]
+    healthcheck:
+      {
+        test:
+          [
+            "CMD-SHELL",
+            "curl -s http://localhost:9200/_cluster/health?local=true | grep -q '\"status\":\"\\(green\\|yellow\\)\"'",
+          ],
+        interval: 10s,
+        timeout: 5s,
+        retries: 3,
+      }
+
+  es-master-3:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: es-master-3
+    environment:
+      - node.name=es-master-3-node
+      - cluster.name=dev-cluster
+      - node.roles=master
+      - discovery.seed_hosts=es-master-1,es-master-2,es-master-3
+      - cluster.initial_master_nodes=es-master-1-node,es-master-2-node,es-master-3-node
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false
+      - network.host=0.0.0.0
+      - http.port=9200
+      - ES_JAVA_OPTS=-Xms768m -Xmx768m
+    ulimits:
+      { memlock: { soft: -1, hard: -1 }, nofile: { soft: 65535, hard: 65535 } }
+    networks: [elastic-net]
+    healthcheck:
+      {
+        test:
+          [
+            "CMD-SHELL",
+            "curl -s http://localhost:9200/_cluster/health?local=true | grep -q '\"status\":\"\\(green\\|yellow\\)\"'",
+          ],
+        interval: 10s,
+        timeout: 5s,
+        retries: 3,
+      }
+
+  # === Data Nodes ===
+  es-data-1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: es-data-1
+    environment:
+      - node.name=es-data-1-node
+      - cluster.name=dev-cluster
+      - node.roles=data
+      - discovery.seed_hosts=es-master-1,es-master-2,es-master-3 # Data nodes discover masters
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false
+      - network.host=0.0.0.0
+      - http.port=9200
+      - ES_JAVA_OPTS=-Xms768m -Xmx768m
+    ulimits:
+      { memlock: { soft: -1, hard: -1 }, nofile: { soft: 65535, hard: 65535 } }
+    volumes:
+      - esdata1:/usr/share/elasticsearch/data # Persist data
+    networks: [elastic-net]
+    healthcheck:
+      {
+        test:
+          [
+            "CMD-SHELL",
+            "curl -s http://localhost:9200/_cluster/health?local=true | grep -q '\"status\":\"\\(green\\|yellow\\)\"'",
+          ],
+        interval: 10s,
+        timeout: 5s,
+        retries: 3,
+      }
+
+  es-data-2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: es-data-2
+    environment:
+      - node.name=es-data-2-node
+      - cluster.name=dev-cluster
+      - node.roles=data
+      - discovery.seed_hosts=es-master-1,es-master-2,es-master-3
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false
+      - network.host=0.0.0.0
+      - http.port=9200
+      - ES_JAVA_OPTS=-Xms768m -Xmx768m
+    ulimits:
+      { memlock: { soft: -1, hard: -1 }, nofile: { soft: 65535, hard: 65535 } }
+    volumes:
+      - esdata2:/usr/share/elasticsearch/data
+    networks: [elastic-net]
+    healthcheck:
+      {
+        test:
+          [
+            "CMD-SHELL",
+            "curl -s http://localhost:9200/_cluster/health?local=true | grep -q '\"status\":\"\\(green\\|yellow\\)\"'",
+          ],
+        interval: 10s,
+        timeout: 5s,
+        retries: 3,
+      }
+
+  es-data-3:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: es-data-3
+    environment:
+      - node.name=es-data-3-node
+      - cluster.name=dev-cluster
+      - node.roles=data
+      - discovery.seed_hosts=es-master-1,es-master-2,es-master-3
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false
+      - network.host=0.0.0.0
+      - http.port=9200
+      - ES_JAVA_OPTS=-Xms768m -Xmx768m
+    ulimits:
+      { memlock: { soft: -1, hard: -1 }, nofile: { soft: 65535, hard: 65535 } }
+    volumes:
+      - esdata3:/usr/share/elasticsearch/data
+    networks: [elastic-net]
+    healthcheck:
+      {
+        test:
+          [
+            "CMD-SHELL",
+            "curl -s http://localhost:9200/_cluster/health?local=true | grep -q '\"status\":\"\\(green\\|yellow\\)\"'",
+          ],
+        interval: 10s,
+        timeout: 5s,
+        retries: 3,
+      }
+
+  # === Ingest Nodes ===
+  es-ingest-1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: es-ingest-1
+    environment:
+      - node.name=es-ingest-1-node
+      - cluster.name=dev-cluster
+      - node.roles=ingest
+      - discovery.seed_hosts=es-master-1,es-master-2,es-master-3 # Ingest nodes discover masters
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false
+      - network.host=0.0.0.0
+      - http.port=9200
+      - ES_JAVA_OPTS=-Xms768m -Xmx768m
+    ulimits:
+      { memlock: { soft: -1, hard: -1 }, nofile: { soft: 65535, hard: 65535 } }
+    networks: [elastic-net]
+    healthcheck:
+      {
+        test:
+          [
+            "CMD-SHELL",
+            "curl -s http://localhost:9200/_cluster/health?local=true | grep -q '\"status\":\"\\(green\\|yellow\\)\"'",
+          ],
+        interval: 10s,
+        timeout: 5s,
+        retries: 3,
+      }
+
+  es-ingest-2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: es-ingest-2
+    environment:
+      - node.name=es-ingest-2-node
+      - cluster.name=dev-cluster
+      - node.roles=ingest
+      - discovery.seed_hosts=es-master-1,es-master-2,es-master-3
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false
+      - network.host=0.0.0.0
+      - http.port=9200
+      - ES_JAVA_OPTS=-Xms768m -Xmx768m
+    ulimits:
+      { memlock: { soft: -1, hard: -1 }, nofile: { soft: 65535, hard: 65535 } }
+    networks: [elastic-net]
+    healthcheck:
+      {
+        test:
+          [
+            "CMD-SHELL",
+            "curl -s http://localhost:9200/_cluster/health?local=true | grep -q '\"status\":\"\\(green\\|yellow\\)\"'",
+          ],
+        interval: 10s,
+        timeout: 5s,
+        retries: 3,
+      }
+
+  # === Coordinating Only Nodes ===
+  es-coord-1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: es-coord-1
+    environment:
+      - node.name=es-coord-1-node
+      - cluster.name=dev-cluster
+      - node.roles=coordinating # Explicitly coordinating only
+      - discovery.seed_hosts=es-master-1,es-master-2,es-master-3 # Coordinating nodes discover masters
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false
+      - network.host=0.0.0.0
+      - http.port=9200
+      - ES_JAVA_OPTS=-Xms768m -Xmx768m
+    ulimits:
+      { memlock: { soft: -1, hard: -1 }, nofile: { soft: 65535, hard: 65535 } }
+    networks: [elastic-net]
+    healthcheck:
+      {
+        test:
+          [
+            "CMD-SHELL",
+            "curl -s http://localhost:9200/_cluster/health?local=true | grep -q '\"status\":\"\\(green\\|yellow\\)\"'",
+          ],
+        interval: 10s,
+        timeout: 5s,
+        retries: 3,
+      }
+
+  es-coord-2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: es-coord-2
+    environment:
+      - node.name=es-coord-2-node
+      - cluster.name=dev-cluster
+      - node.roles=coordinating
+      - discovery.seed_hosts=es-master-1,es-master-2,es-master-3
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false
+      - network.host=0.0.0.0
+      - http.port=9200
+      - ES_JAVA_OPTS=-Xms768m -Xmx768m
+    ulimits:
+      { memlock: { soft: -1, hard: -1 }, nofile: { soft: 65535, hard: 65535 } }
+    networks: [elastic-net]
+    healthcheck:
+      {
+        test:
+          [
+            "CMD-SHELL",
+            "curl -s http://localhost:9200/_cluster/health?local=true | grep -q '\"status\":\"\\(green\\|yellow\\)\"'",
+          ],
+        interval: 10s,
+        timeout: 5s,
+        retries: 3,
+      }
+
+  # === Nginx Load Balancer (for Coordinating Nodes) ===
+  nginx:
+    image: nginx:latest
+    container_name: es-lb
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro # Mount custom nginx config
+    ports:
+      - "9200:80" # Expose LB on host port 9200
+    depends_on: # Wait for coord nodes container start (not readiness)
+      es-coord-1: { condition: service_started }
+      es-coord-2: { condition: service_started }
+    networks:
+      - elastic-net
+
+  # === Kibana ===
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=["http://nginx:80"] # Point Kibana to the Nginx LB
+      - SERVER_HOST=0.0.0.0 # Bind Kibana to all interfaces within the container
+      - XPACK_SECURITY_ENABLED=false # Match ES security setting
+    ports:
+      - "5601:5601" # Expose Kibana on host port 5601
+    depends_on: # Wait for LB container start
+      nginx: { condition: service_started }
+      # You could also wait for ES nodes to be healthy if startup time is an issue
+      # es-coord-1: { condition: service_healthy }
+      # es-coord-2: { condition: service_healthy }
+    networks:
+      - elastic-net
+
+volumes:
+  esdata1: # Named volumes for data persistence
+    driver: local
+  esdata2:
+    driver: local
+  esdata3:
+    driver: local
+
+networks:
+  elastic-net:
+    driver: bridge
